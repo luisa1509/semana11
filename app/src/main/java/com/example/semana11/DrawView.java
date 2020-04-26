@@ -12,6 +12,14 @@ import android.view.View;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import com.google.gson.Gson;
+
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 
@@ -47,6 +55,8 @@ public class DrawView extends View {
     private Cuadrado cuadrado9;
     private float tamcua=0;
     private int selec;
+    private DatagramSocket socket;
+    private InetAddress eclipse;
 
     private ArrayList<Cuadrado> tablero;
 
@@ -87,6 +97,21 @@ public class DrawView extends View {
         tablero.add(cuadrado8);
         tablero.add(cuadrado9);
 
+        new Thread(
+                ()->{
+                    try {
+                        socket = new DatagramSocket(5555);
+                        eclipse = InetAddress.getByName("10.0.2.2");
+                    } catch (SocketException e) {
+                        e.printStackTrace();
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                    }
+
+
+                }
+        ).start();
+
 
     }
 
@@ -109,6 +134,13 @@ public class DrawView extends View {
             //Cuadrado cua= tablero[0];
         }
         invalidate();
+        if(framecount % 30 ==0){
+            //enviar arreglo completo
+            Gson gson = new Gson();
+            String json = gson.toJson(tablero);
+            mandarMensaje(json);
+
+        }
     }
 
     @Override
@@ -152,9 +184,26 @@ public class DrawView extends View {
                     selec=9;
                 }
 
+
                 break;
         }
-        return false;
+        return true;
+    }
+
+    public void mandarMensaje(String json){
+        new Thread(
+                ()->{
+
+                    try {
+                        byte[] buffer = json.getBytes();
+                        //cuatro parametros en orden
+                        DatagramPacket packet = new DatagramPacket(buffer,buffer.length,eclipse,5555);
+                        socket.send(packet);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+        ).start();
     }
 
 }
